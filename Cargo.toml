@@ -1,0 +1,13 @@
+[package]
+name = "syn-ext"
+version = "0.0.1"
+authors = ["Jeong YunWon <jeong@youknowone.org>"]
+edition = "2018"
+description = "Human friendly or editable extension for syn"
+license = "BSD-2-Clause"
+license-file = "LICENSE"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+syn = "^1"
