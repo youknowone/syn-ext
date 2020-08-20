@@ -24,3 +24,6 @@ proc-macro = ["syn/proc-macro"]
 
 [dependencies]
 syn = "^1"
+
+[dev-dependencies]
+quote = "*"

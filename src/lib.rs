@@ -21,6 +21,7 @@ pub mod ext {
     }
     #[cfg(any(feature = "derive", feature = "full"))]
     mod derive {
+        #[cfg(any(feature = "parsing"))]
         pub use crate::attribute::AttributeExt;
         pub use crate::meta::MetaExt;
         pub use crate::path::GetPath;

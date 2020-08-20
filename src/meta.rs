@@ -31,6 +31,13 @@ impl<'a> UnwrapOrDefault for Option<&'a PunctuatedNestedMeta> {
     }
 }
 
+pub(crate) fn err_promote_to_list(meta: &Meta) -> Error {
+    Error::new_spanned(
+        meta,
+        "Only Path can be promoted and List is accepted as non-promoted",
+    )
+}
+
 impl MetaExt for Meta {
     fn is_path(&self) -> bool {
         matches!(self, Meta::Path(_))
@@ -46,12 +53,7 @@ impl MetaExt for Meta {
         let path = match self {
             Meta::Path(path) => path.clone(),
             Meta::List(metalist) => return Ok(metalist),
-            other => {
-                return Err(Error::new_spanned(
-                    other,
-                    "Only Path can be promoted and List is accepted as non-promoted",
-                ))
-            }
+            other => return Err(err_promote_to_list(other)),
         };
         *self = Meta::List(MetaList {
             path,
