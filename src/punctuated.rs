@@ -1,4 +1,5 @@
 use syn::punctuated::{Pair, Punctuated};
+
 pub trait PunctuatedExt<T, P> {
     fn remove(&mut self, index: usize) -> Pair<T, P>
     where
@@ -20,4 +21,8 @@ impl<T, P> PunctuatedExt<T, P> for Punctuated<T, P> {
         }
         removed
     }
+}
+
+pub trait EmptyPunctuated<T, P> {
+    fn empty() -> &'static Self;
 }
