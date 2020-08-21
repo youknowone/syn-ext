@@ -26,7 +26,12 @@ impl ItemExt for Item {
             Type(ItemType { ref attrs, .. }) => attrs,
             Union(ItemUnion { ref attrs, .. }) => attrs,
             Use(ItemUse { ref attrs, .. }) => attrs,
-            other => return Err(Error::new_spanned(other, "attrs not allowed for this item")),
+            other => {
+                return Err(Error::new_spanned(
+                    other,
+                    "this kind of item doesn't have attrs",
+                ))
+            }
         };
         Ok(attrs)
     }
@@ -52,9 +57,29 @@ impl ItemExt for Item {
             Union(ItemUnion { ref mut attrs, .. }) => attrs,
             Use(ItemUse { ref mut attrs, .. }) => attrs,
             // verbatim support possible?
-            other => return Err(Error::new_spanned(other, "attrs not allowed for this item")),
+            other => {
+                return Err(Error::new_spanned(
+                    other,
+                    "this kind of item doesn't have attrs",
+                ))
+            }
         };
         Ok(attrs)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use syn::parse_quote;
+
+    #[test]
+    fn test_attrs() {
+        let item: Item = parse_quote!(
+            #[test]
+            type A = u32;
+        );
+        let attr = &item.attrs().unwrap()[0];
     }
 }
 

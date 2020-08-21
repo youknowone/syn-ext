@@ -1,12 +1,8 @@
 use crate::ident::GetIdent;
-use crate::meta::{self, MetaExt, PunctuatedNestedMeta};
+use crate::meta::{self, MetaExt};
 use syn::{
     parse_quote, punctuated::Punctuated, token::Paren, Attribute, Ident, Meta, MetaList, Result,
 };
-
-thread_local! {
-    static EMPTY_META_NESTED: PunctuatedNestedMeta = PunctuatedNestedMeta::new();
-}
 
 impl GetIdent for Attribute {
     fn get_ident(&self) -> Option<&Ident> {
@@ -79,6 +75,14 @@ mod test {
     use super::*;
     use quote::quote;
 
+    macro_rules! assert_quote_eq {
+        ($q1:expr, $q2:expr) => {{
+            let v1 = &$q1;
+            let v2 = &$q2;
+            assert_eq!(quote! { #v1 }.to_string(), quote! { #v2 }.to_string());
+        }};
+    }
+
     fn test_meta_round_trip(attr: Attribute) -> Result<()> {
         let meta = attr.parse_meta()?;
         let created = Attribute::from_meta(meta);
@@ -97,6 +101,43 @@ mod test {
         test_meta_round_trip(parse_quote! { #[cfg(all(a,b,any(c,d)))] }).unwrap();
         test_meta_round_trip(parse_quote! { #[a(b="1",d)] }).unwrap();
         test_meta_round_trip(parse_quote! { #[abc::de::ef] }).unwrap();
+    }
+
+    #[test]
+    fn test_try_meta_mut() {
+        let mut attr: Attribute = parse_quote! { #[cfg(test)] };
+        attr.try_meta_mut(|meta| match meta {
+            Meta::List(metalist) => {
+                metalist.path = parse_quote! { newcfg };
+                Ok(())
+            }
+            _ => unreachable!(),
+        })
+        .unwrap();
+        let expected: Attribute = parse_quote! { #[newcfg(test)] };
+        assert_quote_eq!(attr, expected);
+
+        attr.try_meta_mut(|meta| match meta {
+            Meta::List(metalist) => {
+                metalist.nested.pop();
+                metalist.nested.push(parse_quote!(a));
+                metalist.nested.push(parse_quote!(b = "c"));
+                metalist.nested.push(parse_quote!("d"));
+                Ok(())
+            }
+            _ => unreachable!(),
+        })
+        .unwrap();
+        let expected: Attribute = parse_quote! { #[newcfg(a, b="c", "d")] };
+        assert_quote_eq!(attr, expected);
+    }
+
+    #[test]
+    fn test_promoted_list() {
+        let attr: Attribute = parse_quote! { #[derive] };
+        let list = attr.promoted_list().unwrap();
+        assert_quote_eq!(attr.path, list.path);
+        assert!(list.nested.is_empty());
     }
 }
 

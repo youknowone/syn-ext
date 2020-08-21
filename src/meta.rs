@@ -1,10 +1,10 @@
 use crate::ident::GetIdent;
 use crate::path::GetPath;
-use crate::punctuated::EmptyPunctuated;
-use crate::util::UnwrapOrDefault;
+use crate::shared::{thread_local_ref, SharedEmpty};
+use std::collections::HashMap as Map;
 use syn::{
-    punctuated::Punctuated, token, Error, Ident, Meta, MetaList, MetaNameValue, NestedMeta, Path,
-    Result,
+    punctuated::Punctuated, token, Error, Ident, Lit, Meta, MetaList, MetaNameValue, NestedMeta,
+    Path, Result,
 };
 
 /// The nested field of Meta
@@ -22,13 +22,6 @@ pub trait MetaExt {
 
     fn name_value(&self) -> Result<&MetaNameValue>;
     fn name_value_mut(&mut self) -> Result<&mut MetaNameValue>;
-}
-
-impl<'a> UnwrapOrDefault for Option<&'a PunctuatedNestedMeta> {
-    type Unwrapped = &'a PunctuatedNestedMeta;
-    fn unwrap_or_default(self) -> &'a PunctuatedNestedMeta {
-        self.unwrap_or_else(|| PunctuatedNestedMeta::empty())
-    }
 }
 
 pub(crate) fn err_promote_to_list(meta: &Meta) -> Error {
@@ -109,14 +102,8 @@ thread_local! {
     static EMPTY_META_NESTED: Punctuated<syn::NestedMeta, syn::token::Comma> = Punctuated::new();
 }
 
-impl EmptyPunctuated<syn::NestedMeta, syn::token::Comma>
-    for Punctuated<syn::NestedMeta, syn::token::Comma>
-{
-    fn empty() -> &'static Self {
-        let ptr = EMPTY_META_NESTED.with(|nested| nested as *const _);
-        unsafe {
-            // Safety: Read-only thread-local always has the same value
-            &*ptr
-        }
+impl SharedEmpty for Punctuated<syn::NestedMeta, syn::token::Comma> {
+    fn empty_ref() -> &'static Self {
+        unsafe { thread_local_ref(&EMPTY_META_NESTED) }
     }
 }

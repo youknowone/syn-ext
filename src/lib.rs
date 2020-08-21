@@ -7,7 +7,7 @@ mod item;
 mod meta;
 mod path;
 mod punctuated;
-mod util;
+mod shared;
 
 /// use syn_ext::ext::*;  // Namespace module for extension traits.
 ///
@@ -17,7 +17,6 @@ pub mod ext {
     mod basic {
         pub use crate::ident::GetIdent;
         pub use crate::punctuated::PunctuatedExt;
-        pub use crate::util::UnwrapOrDefault;
     }
     #[cfg(any(feature = "derive", feature = "full"))]
     mod derive {
