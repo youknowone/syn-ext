@@ -25,7 +25,9 @@ pub mod ext {
     mod derive {
         #[cfg(any(feature = "parsing"))]
         pub use crate::attribute::AttributeExt;
-        pub use crate::meta::MetaExt;
+        #[cfg(any(feature = "parsing"))]
+        pub use crate::meta::MetaAttributeExt;
+        pub use crate::meta::{MetaExt, NestedMetaIteratorExt, NestedMetaRefIteratorExt};
         pub use crate::path::GetPath;
     }
     #[cfg(feature = "full")]
