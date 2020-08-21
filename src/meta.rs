@@ -83,6 +83,85 @@ impl MetaExt for Meta {
     }
 }
 
+pub trait PunctuatedNestedMetaExt {
+    fn as_multi_map_and_lits<'a, K, KF>(
+        &'a self,
+        path_to_key: KF,
+    ) -> (Map<K, Vec<(usize, &'a Meta)>>, Vec<(usize, &'a Lit)>)
+    where
+        K: std::hash::Hash + Eq,
+        KF: Fn(&Path) -> Option<K>;
+
+    fn as_unique_map_and_lits<'a, K, KF>(
+        &'a self,
+        path_to_key: KF,
+    ) -> Result<(Map<K, (usize, &'a Meta)>, Vec<(usize, &'a Lit)>)>
+    where
+        K: std::hash::Hash + Eq,
+        KF: Fn(&Path) -> Option<K>;
+}
+
+impl PunctuatedNestedMetaExt for PunctuatedNestedMeta {
+    fn as_multi_map_and_lits<'a, K, KF>(
+        &'a self,
+        path_to_key: KF,
+    ) -> (Map<K, Vec<(usize, &'a Meta)>>, Vec<(usize, &'a Lit)>)
+    where
+        K: std::hash::Hash + Eq,
+        KF: Fn(&Path) -> Option<K>,
+    {
+        let mut map: Map<K, Vec<_>> = Map::new();
+        let mut lits = Vec::new();
+        for (i, nmeta) in self.iter().enumerate() {
+            match nmeta {
+                NestedMeta::Meta(meta) => {
+                    let path = meta.path();
+                    let key = if let Some(key) = path_to_key(path) {
+                        key
+                    } else {
+                        continue;
+                    };
+                    map.entry(key).or_default().push((i, meta))
+                }
+                NestedMeta::Lit(lit) => lits.push((i, lit)),
+            }
+        }
+        (map, lits)
+    }
+
+    fn as_unique_map_and_lits<'a, K, KF>(
+        &'a self,
+        path_to_key: KF,
+    ) -> Result<(Map<K, (usize, &'a Meta)>, Vec<(usize, &'a Lit)>)>
+    where
+        K: std::hash::Hash + Eq,
+        KF: Fn(&Path) -> Option<K>,
+    {
+        let mut map = Map::new();
+        let mut lits = Vec::new();
+        for (i, nmeta) in self.iter().enumerate() {
+            match nmeta {
+                NestedMeta::Meta(meta) => {
+                    let path = meta.path();
+                    let key = if let Some(key) = path_to_key(path) {
+                        key
+                    } else {
+                        continue;
+                    };
+                    if let Some((_, removed)) = map.insert(key, (i, meta)) {
+                        return Err(Error::new_spanned(
+                            removed,
+                            "The give path must be unique in the attribute",
+                        ));
+                    }
+                }
+                NestedMeta::Lit(lit) => lits.push((i, lit)),
+            }
+        }
+        Ok((map, lits))
+    }
+}
+
 impl GetPath for NestedMeta {
     fn get_path(&self) -> Option<&Path> {
         match self {
