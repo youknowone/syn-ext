@@ -8,6 +8,9 @@ mod meta;
 mod path;
 mod punctuated;
 mod shared;
+#[cfg(test)]
+#[macro_use]
+mod test;
 
 /// use syn_ext::ext::*;  // Namespace module for extension traits.
 ///

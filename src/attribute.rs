@@ -73,15 +73,8 @@ impl AttributeExt for Attribute {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::assert_quote_eq;
     use quote::quote;
-
-    macro_rules! assert_quote_eq {
-        ($q1:expr, $q2:expr) => {{
-            let v1 = &$q1;
-            let v2 = &$q2;
-            assert_eq!(quote! { #v1 }.to_string(), quote! { #v2 }.to_string());
-        }};
-    }
 
     fn test_meta_round_trip(attr: Attribute) -> Result<()> {
         let meta = attr.parse_meta()?;

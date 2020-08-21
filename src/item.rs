@@ -68,21 +68,6 @@ impl ItemExt for Item {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use syn::parse_quote;
-
-    #[test]
-    fn test_attrs() {
-        let item: Item = parse_quote!(
-            #[test]
-            type A = u32;
-        );
-        let attr = &item.attrs().unwrap()[0];
-    }
-}
-
 pub trait ItemModExt {
     fn unbraced_content(&self) -> Result<&[Item]>;
     fn unbraced_content_mut(&mut self) -> Result<&mut Vec<Item>>;
@@ -109,5 +94,51 @@ impl ItemModExt for ItemMod {
                 "module declaration doesn't have content",
             ))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::assert_quote_eq;
+    use quote::quote;
+    use syn::parse_quote;
+
+    #[test]
+    fn test_attrs() {
+        let mut item: Item = parse_quote!(
+            #[test]
+            type A = u32;
+        );
+        let expected: Attribute = parse_quote!(#[test]);
+        {
+            let attr = &item.attrs().unwrap()[0];
+            assert_quote_eq!(attr, expected);
+        }
+        {
+            let attr = &item.attrs_mut().unwrap()[0];
+            assert_quote_eq!(attr, expected);
+        }
+    }
+
+    #[test]
+    fn test_unbraced_content() {
+        let module: ItemMod = parse_quote!(
+            mod m {
+                static x: usize = 0;
+                fn f() {}
+            }
+        );
+        let content = module.unbraced_content().unwrap();
+        assert!(matches!(content[0], Item::Static(_)));
+        assert!(matches!(content[1], Item::Fn(_)));
+    }
+
+    #[test]
+    fn test_unbraced_content_decl() {
+        let module: ItemMod = parse_quote!(
+            mod m;
+        );
+        assert!(module.unbraced_content().is_err());
     }
 }

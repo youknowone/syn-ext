@@ -22,7 +22,3 @@ impl<T, P> PunctuatedExt<T, P> for Punctuated<T, P> {
         removed
     }
 }
-
-pub trait EmptyPunctuated<T, P> {
-    fn empty() -> &'static Self;
-}
