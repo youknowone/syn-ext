@@ -1,6 +1,8 @@
 use syn::punctuated::{Pair, Punctuated};
 
+/// Extension for [syn::punctuated::Punctuated]
 pub trait PunctuatedExt<T, P> {
+    /// Removes and returns the element at position index, popping all elements after it and push them back.
     fn remove(&mut self, index: usize) -> Pair<T, P>
     where
         P: Default;

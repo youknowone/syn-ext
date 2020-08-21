@@ -7,20 +7,32 @@ use syn::{
     NestedMeta, Path, Result,
 };
 
-/// The nested field of Meta
+/// Shortcut type for [syn::MetaList::nested]
 pub type PunctuatedNestedMeta = Punctuated<NestedMeta, token::Comma>;
 
+/// Extension for [syn::Meta]
 pub trait MetaExt {
+    /// Returns check if [syn::Meta::Path]
     fn is_path(&self) -> bool;
+    /// Returns check if [syn::Meta::List]
     fn is_list(&self) -> bool;
+    /// Returns check if [syn::Meta::NameValue]
     fn is_name_value(&self) -> bool;
 
+    /// Promotes to empty [syn::Meta::List] with given `paren` if [syn::Meta::Path]
+    ///
+    /// A [syn::Meta::Path] value can be regarded as an empty [syn::Meta::List].
+    /// `promote` means converting [syn::Meta::Path] to an actual empty [syn::Meta::List].
     fn promote_to_list(&mut self, paren: token::Paren) -> Result<&mut MetaList>;
 
+    /// Returns [syn::MetaList] of [syn::Meta::List]; Otherwise `Err`
     fn list(&self) -> Result<&MetaList>;
+    /// Returns [syn::MetaList] of [syn::Meta::List]; Otherwise `Err`
     fn list_mut(&mut self) -> Result<&mut MetaList>;
 
+    /// Returns [syn::MetaNameValue] of [syn::Meta::NameValue]; Otherwise `Err`
     fn name_value(&self) -> Result<&MetaNameValue>;
+    /// Returns [syn::MetaNameValue] of [syn::Meta::NameValue]; Otherwise `Err`
     fn name_value_mut(&mut self) -> Result<&mut MetaNameValue>;
 }
 
@@ -88,15 +100,18 @@ type IndexMetaRef<M> = (usize, M);
 type MultiMetaMap<'a, K, M> = Map<K, Vec<IndexMetaRef<M>>>;
 type UniqueMetaMap<'a, K, M> = Map<K, IndexMetaRef<M>>;
 
+/// Constructs and returns map from [syn::Meta] iterator
 pub trait MetaIteratorExt<'a, M>
 where
     M: 'a + std::borrow::Borrow<Meta>,
 {
+    /// Constructs and returns a multi-value map from [syn::Meta] iterator
     fn to_multi_map<K, KF>(self, path_to_key: KF) -> Result<MultiMetaMap<'a, K, M>>
     where
         K: std::hash::Hash + Eq,
         KF: Fn(&Path) -> Result<Option<K>>;
 
+    /// Constructs and returns a unique-value map from [syn::Meta] iterator. `Err` if duplicates.
     fn to_unique_map<K, KF>(self, path_to_key: KF) -> Result<UniqueMetaMap<'a, K, M>>
     where
         K: std::hash::Hash + Eq,
@@ -173,6 +188,7 @@ where
     }
 }
 
+/// experimental
 #[allow(clippy::type_complexity)]
 pub trait NestedMetaRefIteratorExt<'a, M>
 where
@@ -283,6 +299,7 @@ where
     }
 }
 
+/// experimental
 #[allow(clippy::type_complexity)]
 pub trait NestedMetaIteratorExt<'a> {
     fn into_multi_map_and_lits<K, KF>(
@@ -351,6 +368,7 @@ where
     }
 }
 
+/// experimental
 #[allow(clippy::type_complexity)]
 pub trait MetaAttributeExt<'a> {
     fn to_multi_map_and_attrs<K, KF>(
@@ -449,6 +467,7 @@ where
 }
 
 impl GetPath for NestedMeta {
+    /// Get path if [syn::NestedMeta::Meta]; Otherwise `None`
     fn get_path(&self) -> Option<&Path> {
         match self {
             NestedMeta::Meta(meta) => Some(meta.path()),
@@ -458,6 +477,7 @@ impl GetPath for NestedMeta {
 }
 
 impl GetIdent for Meta {
+    /// Get ident of [syn::Meta::path]
     fn get_ident(&self) -> Option<&Ident> {
         self.path().get_ident()
     }
