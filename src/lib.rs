@@ -1,3 +1,8 @@
+//! Collections of syn shortcuts and editable interface.
+//!
+//! Start with `use syn_ext::ext::*;`
+//! Look around extension methods in [ext module](ext/index.html)
+
 #[cfg(any(feature = "derive", feature = "full"))]
 mod attribute;
 mod ident;
@@ -12,9 +17,10 @@ mod shared;
 #[macro_use]
 mod test;
 
-/// use syn_ext::ext::*;  // Namespace module for extension traits.
+/// `use syn_ext::ext::*`;  // Namespace module for extension traits.
 ///
-/// There are many ext items to keep in track for human. Try `*`.
+/// Always try to use `*`.
+/// The public names here are intended to be used as `*` and will be changed any time.
 pub mod ext {
     // only extension traits can be named here
     mod basic {
@@ -27,7 +33,9 @@ pub mod ext {
         pub use crate::attribute::AttributeExt;
         #[cfg(any(feature = "parsing"))]
         pub use crate::meta::MetaAttributeExt;
-        pub use crate::meta::{MetaExt, NestedMetaIteratorExt, NestedMetaRefIteratorExt};
+        pub use crate::meta::{
+            MetaExt, MetaIteratorExt, NestedMetaIteratorExt, NestedMetaRefIteratorExt,
+        };
         pub use crate::path::GetPath;
     }
     #[cfg(feature = "full")]

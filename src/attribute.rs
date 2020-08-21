@@ -5,26 +5,49 @@ use syn::{
 };
 
 impl GetIdent for Attribute {
+    /// Get ident of the [syn::Attribute::path] field.
     fn get_ident(&self) -> Option<&Ident> {
         self.path.get_ident()
     }
 }
 
+/// Extension for [syn::Attribute]
 #[cfg(feature = "parsing")]
 pub trait AttributeExt {
+    /// Constructs and returns a new [syn::Attribute] from [syn::Meta]
     fn from_meta<M>(meta: M) -> Self
     where
         M: IntoAttribute;
 
+    /// Takes a closure and calls it for parsed meta. After call, applys back the manipulated [syn::Meta].
+    ///
+    /// 1. Try [syn::Attribute::parse_meta]; return if `Err`
+    /// 2. Run `f`
+    /// 3. Apply back the manipulated [syn::Meta] by `f`.
+    /// 4. Return the result of `f`.
+    ///
+    /// Note: Even `f` returns `Err`, meta will be made into self.
     fn try_meta_mut<F, R>(&mut self, f: F) -> Result<R>
     where
-        F: Fn(&mut Meta) -> Result<R>;
+        F: FnOnce(&mut Meta) -> Result<R>;
 
+    /// Returns a fake promoted list value of [syn::MetaList].
+    ///
+    /// If [syn::Meta::List], return inner [syn::MetaList].
+    /// If [syn::Meta::Path], return a fake [syn::MetaList] with default paren and empty nested.
+    /// Otherwise return `Err`
     fn promoted_list(&self) -> Result<MetaList>;
 
+    /// Takes a closure and calls it for promoted list of parsed meta. After call, applys back the manipulated [syn::MetaList].
+    ///
+    /// 1. Try [syn::Attribute::parse_meta]; return if `Err`
+    /// 2. Promote to [syn::Meta::List] if [syn::Meta::Path]
+    /// 3. Run `f` to inner [syn::MetaList]
+    /// 4. Apply back the manipulated [syn::Meta] by `f`.
+    /// 5. Return the result of `f`.
     fn try_promoted_list_mut<F, R>(&mut self, paren: Paren, f: F) -> Result<R>
     where
-        F: Fn(&mut MetaList) -> Result<R>;
+        F: FnOnce(&mut MetaList) -> Result<R>;
 }
 
 #[cfg(feature = "parsing")]
@@ -36,15 +59,14 @@ impl AttributeExt for Attribute {
         meta.into_attribute()
     }
 
-    /// Edit meta and build self from it
     fn try_meta_mut<F, R>(&mut self, f: F) -> Result<R>
     where
-        F: Fn(&mut Meta) -> Result<R>,
+        F: FnOnce(&mut Meta) -> Result<R>,
     {
         let mut meta = self.parse_meta()?;
-        let result = f(&mut meta)?;
+        let result = f(&mut meta);
         *self = Self::from_meta(meta);
-        Ok(result)
+        Ok(result?)
     }
 
     fn promoted_list(&self) -> Result<MetaList> {
@@ -61,7 +83,7 @@ impl AttributeExt for Attribute {
 
     fn try_promoted_list_mut<F, R>(&mut self, paren: Paren, f: F) -> Result<R>
     where
-        F: Fn(&mut MetaList) -> Result<R>,
+        F: FnOnce(&mut MetaList) -> Result<R>,
     {
         self.try_meta_mut(|meta| {
             let metalist = meta.promote_to_list(paren)?;

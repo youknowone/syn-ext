@@ -1,7 +1,10 @@
 use syn::{Attribute, Error, Item, ItemMod, Result};
 
+/// Extension for [syn::Item]
 pub trait ItemExt {
+    /// Returns reference of inner attrs if not verbatim; otherwise `Err`
     fn attrs(&self) -> Result<&[Attribute]>;
+    /// Returns mutable reference of inner attrs if not verbatim; otherwise `Err`
     fn attrs_mut(&mut self) -> Result<&mut Vec<Attribute>>;
 }
 
@@ -56,7 +59,6 @@ impl ItemExt for Item {
             Type(ItemType { ref mut attrs, .. }) => attrs,
             Union(ItemUnion { ref mut attrs, .. }) => attrs,
             Use(ItemUse { ref mut attrs, .. }) => attrs,
-            // verbatim support possible?
             other => {
                 return Err(Error::new_spanned(
                     other,
@@ -68,8 +70,11 @@ impl ItemExt for Item {
     }
 }
 
+/// Extension for [syn::ItemMod]
 pub trait ItemModExt {
+    /// Returns reference of content items without braces unless a declaration
     fn unbraced_content(&self) -> Result<&[Item]>;
+    /// Returns reference of content items without braces unless a declaration
     fn unbraced_content_mut(&mut self) -> Result<&mut Vec<Item>>;
 }
 
