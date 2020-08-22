@@ -73,26 +73,40 @@ impl ItemExt for Item {
 /// Extension for [syn::ItemMod]
 pub trait ItemModExt {
     /// Returns reference of content items without braces unless a declaration
+    fn items(&self) -> Option<&[Item]>;
+    /// Returns reference of content items without braces unless a declaration
+    fn items_mut(&mut self) -> Option<&mut Vec<Item>>;
+    /// Returns reference of content items without braces unless a declaration
+    /// #[deprecated(since="0.1.1", note="Use items() instead")]
     fn unbraced_content(&self) -> Result<&[Item]>;
     /// Returns reference of content items without braces unless a declaration
+    /// #[deprecated(since="0.1.1", note="Use items_mut() instead")]
     fn unbraced_content_mut(&mut self) -> Result<&mut Vec<Item>>;
 }
 
 impl ItemModExt for ItemMod {
-    fn unbraced_content(&self) -> Result<&[Item]> {
+    fn items(&self) -> Option<&[Item]> {
         if let Some((_, content)) = self.content.as_ref() {
-            Ok(content)
+            Some(content)
         } else {
-            Err(Error::new_spanned(
-                self,
-                "module declaration doesn't have content",
-            ))
+            None
         }
+    }
+    fn items_mut(&mut self) -> Option<&mut Vec<Item>> {
+        if let Some((_, content)) = self.content.as_mut() {
+            Some(content)
+        } else {
+            None
+        }
+    }
+
+    fn unbraced_content(&self) -> Result<&[Item]> {
+        self.items()
+            .ok_or_else(|| Error::new_spanned(self, "module declaration doesn't have content"))
     }
     fn unbraced_content_mut(&mut self) -> Result<&mut Vec<Item>> {
         if self.content.is_some() {
-            let (_, content) = self.content.as_mut().unwrap();
-            Ok(content)
+            Ok(self.items_mut().unwrap())
         } else {
             Err(Error::new_spanned(
                 self,
@@ -127,23 +141,23 @@ mod tests {
     }
 
     #[test]
-    fn test_unbraced_content() {
+    fn test_items() {
         let module: ItemMod = parse_quote!(
             mod m {
                 static x: usize = 0;
                 fn f() {}
             }
         );
-        let content = module.unbraced_content().unwrap();
+        let content = module.items().unwrap();
         assert!(matches!(content[0], Item::Static(_)));
         assert!(matches!(content[1], Item::Fn(_)));
     }
 
     #[test]
-    fn test_unbraced_content_decl() {
+    fn test_items_decl() {
         let module: ItemMod = parse_quote!(
             mod m;
         );
-        assert!(module.unbraced_content().is_err());
+        assert!(module.items().is_err());
     }
 }
