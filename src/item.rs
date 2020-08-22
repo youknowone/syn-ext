@@ -1,5 +1,5 @@
 use crate::ident::GetIdent;
-use syn::{Attribute, Error, Ident, ImplItem, Item, ItemMod, Result, TraitItem};
+use syn::{Attribute, Ident, ImplItem, Item, ItemMod, Result, TraitItem};
 
 /// Extension for [syn::Item]
 pub trait ItemLike {
@@ -360,6 +360,6 @@ mod tests {
         let module: ItemMod = parse_quote!(
             mod m;
         );
-        assert!(module.items().is_err());
+        assert!(module.items().is_none());
     }
 }
