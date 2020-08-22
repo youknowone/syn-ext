@@ -1,6 +1,6 @@
 [package]
 name = "syn-ext"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Jeong YunWon <jeong+synext@youknowone.org>"]
 edition = "2018"
 description = "Human friendly or editable extension for syn"

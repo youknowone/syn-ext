@@ -1,14 +1,24 @@
-use syn::{Attribute, Error, Item, ItemMod, Result};
+use crate::ident::GetIdent;
+use syn::{Attribute, Error, Ident, ImplItem, Item, ItemMod, Result, TraitItem};
 
 /// Extension for [syn::Item]
-pub trait ItemExt {
+pub trait ItemLike {
     /// Returns reference of inner attrs if not verbatim; otherwise `Err`
     fn attrs(&self) -> Result<&[Attribute]>;
     /// Returns mutable reference of inner attrs if not verbatim; otherwise `Err`
     fn attrs_mut(&mut self) -> Result<&mut Vec<Attribute>>;
+
+    /// Returns `true` if self matches `*ItemConst`
+    fn is_const(&self) -> bool;
+    /// Returns `true` if self matches `Item::Fn` or `*ItemMethod`
+    fn is_function_or_method(&self) -> bool;
+    /// Returns `true` if self matches `*ItemType`
+    fn is_type(&self) -> bool;
+    /// Returns `true` if self matches `*ItemMacro`
+    fn is_macro(&self) -> bool;
 }
 
-impl ItemExt for Item {
+impl ItemLike for Item {
     fn attrs(&self) -> Result<&[Attribute]> {
         use syn::Item::*;
         use syn::*;
@@ -68,7 +78,154 @@ impl ItemExt for Item {
         };
         Ok(attrs)
     }
+
+    fn is_const(&self) -> bool {
+        matches!(self, Item::Const(_))
+    }
+    fn is_function_or_method(&self) -> bool {
+        matches!(self, Item::Fn(_))
+    }
+    fn is_type(&self) -> bool {
+        matches!(self, Item::Type(_))
+    }
+    fn is_macro(&self) -> bool {
+        matches!(self, Item::Macro(_))
+    }
 }
+
+impl ItemLike for ImplItem {
+    fn attrs(&self) -> Result<&[Attribute]> {
+        use syn::ImplItem::*;
+        use syn::*;
+        let attrs = match self {
+            Const(ImplItemConst { ref attrs, .. }) => attrs,
+            Method(ImplItemMethod { ref attrs, .. }) => attrs,
+            Type(ImplItemType { ref attrs, .. }) => attrs,
+            Macro(ImplItemMacro { ref attrs, .. }) => attrs,
+            other => {
+                return Err(Error::new_spanned(
+                    other,
+                    "this kind of item doesn't have attrs",
+                ))
+            }
+        };
+        Ok(attrs)
+    }
+
+    fn attrs_mut(&mut self) -> Result<&mut Vec<Attribute>> {
+        use syn::ImplItem::*;
+        use syn::*;
+        let attrs = match self {
+            Const(ImplItemConst { ref mut attrs, .. }) => attrs,
+            Method(ImplItemMethod { ref mut attrs, .. }) => attrs,
+            Type(ImplItemType { ref mut attrs, .. }) => attrs,
+            Macro(ImplItemMacro { ref mut attrs, .. }) => attrs,
+            other => {
+                return Err(Error::new_spanned(
+                    other,
+                    "this kind of item doesn't have attrs",
+                ))
+            }
+        };
+        Ok(attrs)
+    }
+
+    fn is_const(&self) -> bool {
+        matches!(self, ImplItem::Const(_))
+    }
+    fn is_function_or_method(&self) -> bool {
+        matches!(self, ImplItem::Method(_))
+    }
+    fn is_type(&self) -> bool {
+        matches!(self, ImplItem::Type(_))
+    }
+    fn is_macro(&self) -> bool {
+        matches!(self, ImplItem::Macro(_))
+    }
+}
+
+impl ItemLike for TraitItem {
+    fn attrs(&self) -> Result<&[Attribute]> {
+        use syn::TraitItem::*;
+        use syn::*;
+        let attrs = match self {
+            Const(TraitItemConst { ref attrs, .. }) => attrs,
+            Method(TraitItemMethod { ref attrs, .. }) => attrs,
+            Type(TraitItemType { ref attrs, .. }) => attrs,
+            Macro(TraitItemMacro { ref attrs, .. }) => attrs,
+            other => {
+                return Err(Error::new_spanned(
+                    other,
+                    "this kind of item doesn't have attrs",
+                ))
+            }
+        };
+        Ok(attrs)
+    }
+
+    fn attrs_mut(&mut self) -> Result<&mut Vec<Attribute>> {
+        use syn::TraitItem::*;
+        use syn::*;
+        let attrs = match self {
+            Const(TraitItemConst { ref mut attrs, .. }) => attrs,
+            Method(TraitItemMethod { ref mut attrs, .. }) => attrs,
+            Type(TraitItemType { ref mut attrs, .. }) => attrs,
+            Macro(TraitItemMacro { ref mut attrs, .. }) => attrs,
+            other => {
+                return Err(Error::new_spanned(
+                    other,
+                    "this kind of item doesn't have attrs",
+                ))
+            }
+        };
+        Ok(attrs)
+    }
+
+    fn is_const(&self) -> bool {
+        matches!(self, TraitItem::Const(_))
+    }
+    fn is_function_or_method(&self) -> bool {
+        matches!(self, TraitItem::Method(_))
+    }
+    fn is_type(&self) -> bool {
+        matches!(self, TraitItem::Type(_))
+    }
+    fn is_macro(&self) -> bool {
+        matches!(self, TraitItem::Macro(_))
+    }
+}
+
+pub trait ItemAttrExt: ItemLike {
+    /// Takes a closure and calls it with separated attrs and item, as both mutable references.
+    ///
+    /// 1. Try to get attrs; Otherwise `Err`
+    /// 2. Split `attrs` from `self` with [std::mem::replace]
+    /// 3. Call the closure `f`
+    /// 4. Merge `attrs` into `self`
+    ///
+    /// Note: During the closure call, `attrs` in `self` is always an empty.
+    /// Always access `attrs` with given closure parameter.
+    ///
+    /// # Panics
+    /// Panics if replaced `attrs` in `self` is not empty at merge step.
+    fn try_split_attr_mut<F, R>(&mut self, f: F) -> Result<R>
+    where
+        F: FnOnce(&mut Vec<Attribute>, &mut Self) -> Result<R>,
+    {
+        let mut attrs = std::mem::replace(self.attrs_mut()?, Vec::new());
+        let result = f(&mut attrs, self);
+        let _temp = std::mem::replace(self.attrs_mut().unwrap(), attrs);
+        assert!(
+            _temp.is_empty(),
+            "attrs changed during replacement. this behavior must be a bug."
+        );
+        result
+    }
+}
+
+impl ItemAttrExt for Item {}
+impl ItemAttrExt for ImplItem {}
+impl ItemAttrExt for TraitItem {}
 
 /// Extension for [syn::ItemMod]
 pub trait ItemModExt {
@@ -76,12 +233,6 @@ pub trait ItemModExt {
     fn items(&self) -> Option<&[Item]>;
     /// Returns reference of content items without braces unless a declaration
     fn items_mut(&mut self) -> Option<&mut Vec<Item>>;
-    /// Returns reference of content items without braces unless a declaration
-    /// #[deprecated(since="0.1.1", note="Use items() instead")]
-    fn unbraced_content(&self) -> Result<&[Item]>;
-    /// Returns reference of content items without braces unless a declaration
-    /// #[deprecated(since="0.1.1", note="Use items_mut() instead")]
-    fn unbraced_content_mut(&mut self) -> Result<&mut Vec<Item>>;
 }
 
 impl ItemModExt for ItemMod {
@@ -99,20 +250,71 @@ impl ItemModExt for ItemMod {
             None
         }
     }
+}
 
-    fn unbraced_content(&self) -> Result<&[Item]> {
-        self.items()
-            .ok_or_else(|| Error::new_spanned(self, "module declaration doesn't have content"))
+impl GetIdent for Item {
+    fn get_ident(&self) -> Option<&Ident> {
+        use syn::Item::*;
+        use syn::UseTree::*;
+        use syn::*;
+        let attrs = match self {
+            Const(ItemConst { ref ident, .. }) => ident,
+            Enum(ItemEnum { ref ident, .. }) => ident,
+            ExternCrate(ItemExternCrate { ref ident, .. }) => ident,
+            Fn(ItemFn { sig, .. }) => &sig.ident,
+            Impl(ItemImpl { .. }) => unimplemented!(),
+            Macro(ItemMacro { ref ident, .. }) => return ident.as_ref(),
+            Macro2(ItemMacro2 { ref ident, .. }) => ident,
+            Mod(ItemMod { ref ident, .. }) => ident,
+            Static(ItemStatic { ref ident, .. }) => ident,
+            Struct(ItemStruct { ref ident, .. }) => ident,
+            Trait(ItemTrait { ref ident, .. }) => ident,
+            TraitAlias(ItemTraitAlias { ref ident, .. }) => ident,
+            Type(ItemType { ref ident, .. }) => ident,
+            Union(ItemUnion { ref ident, .. }) => ident,
+            Use(ItemUse { ref tree, .. }) => match tree {
+                Name(UseName { ident }) => ident,
+                _ => return None,
+            },
+            _ => return None,
+        };
+        Some(attrs)
     }
-    fn unbraced_content_mut(&mut self) -> Result<&mut Vec<Item>> {
-        if self.content.is_some() {
-            Ok(self.items_mut().unwrap())
-        } else {
-            Err(Error::new_spanned(
-                self,
-                "module declaration doesn't have content",
-            ))
-        }
+}
+
+impl GetIdent for ImplItem {
+    fn get_ident(&self) -> Option<&Ident> {
+        use syn::ImplItem::*;
+        use syn::*;
+        let ident = match self {
+            Const(ImplItemConst { ref ident, .. }) => ident,
+            Method(ImplItemMethod { sig, .. }) => &sig.ident,
+            Type(ImplItemType { ref ident, .. }) => ident,
+            Macro(ImplItemMacro {
+                mac: syn::Macro { path, .. },
+                ..
+            }) => return path.get_ident(),
+            _ => return None,
+        };
+        Some(ident)
+    }
+}
+
+impl GetIdent for TraitItem {
+    fn get_ident(&self) -> Option<&Ident> {
+        use syn::TraitItem::*;
+        use syn::*;
+        let ident = match self {
+            Const(TraitItemConst { ref ident, .. }) => ident,
+            Method(TraitItemMethod { sig, .. }) => &sig.ident,
+            Type(TraitItemType { ref ident, .. }) => ident,
+            Macro(TraitItemMacro {
+                mac: syn::Macro { path, .. },
+                ..
+            }) => return path.get_ident(),
+            _ => return None,
+        };
+        Some(ident)
     }
 }
 

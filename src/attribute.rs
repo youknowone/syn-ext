@@ -19,7 +19,7 @@ pub trait AttributeExt {
     where
         M: IntoAttribute;
 
-    /// Takes a closure and calls it for parsed meta. After call, applys back the manipulated [syn::Meta].
+    /// Takes a closure and calls it with parsed meta. After call, applys back the manipulated [syn::Meta].
     ///
     /// 1. Try [syn::Attribute::parse_meta]; return if `Err`
     /// 2. Run `f`
@@ -38,7 +38,7 @@ pub trait AttributeExt {
     /// Otherwise return `Err`
     fn promoted_list(&self) -> Result<MetaList>;
 
-    /// Takes a closure and calls it for promoted list of parsed meta. After call, applys back the manipulated [syn::MetaList].
+    /// Takes a closure and calls it with promoted list of parsed meta. After call, applys back the manipulated [syn::MetaList].
     ///
     /// 1. Try [syn::Attribute::parse_meta]; return if `Err`
     /// 2. Promote to [syn::Meta::List] if [syn::Meta::Path]

@@ -12,11 +12,11 @@ pub type PunctuatedNestedMeta = Punctuated<NestedMeta, token::Comma>;
 
 /// Extension for [syn::Meta]
 pub trait MetaExt {
-    /// Returns check if [syn::Meta::Path]
+    /// Returns `true` if self matches [syn::Meta::Path]
     fn is_path(&self) -> bool;
-    /// Returns check if [syn::Meta::List]
+    /// Returns `true` if self matches [syn::Meta::List]
     fn is_list(&self) -> bool;
-    /// Returns check if [syn::Meta::NameValue]
+    /// Returns `true` if self matches [syn::Meta::NameValue]
     fn is_name_value(&self) -> bool;
 
     /// Promotes to empty [syn::Meta::List] with given `paren` if [syn::Meta::Path]

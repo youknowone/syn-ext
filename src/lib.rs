@@ -40,7 +40,7 @@ pub mod ext {
     }
     #[cfg(feature = "full")]
     mod full {
-        pub use crate::item::{ItemExt, ItemModExt};
+        pub use crate::item::{ItemAttrExt, ItemLike, ItemModExt};
     }
 
     pub use basic::*;
