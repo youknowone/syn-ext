@@ -92,6 +92,54 @@ impl AttributeExt for Attribute {
     }
 }
 
+/// Extension for `std::iter::Iterator<[syn::Attribute]>`
+#[cfg(feature = "parsing")]
+pub trait AttributeIteratorExt {
+    // fn doc_items(&self) -> impl std::iter::Iterator<Item=String>;
+    /// Constructs and returns doc comment string by joining doc from multiple attrs
+    fn doc(self) -> Option<String>;
+
+    // fn filter_name<'a, P>(
+    //     &'a self,
+    //     name: &'static str,
+    // ) -> std::iter::Filter<std::slice::Iter<'a, Attribute>, P>
+    // where
+    //     P: FnMut(&&'a syn::Attribute) -> bool;
+}
+
+#[cfg(feature = "parsing")]
+impl<'a, I> AttributeIteratorExt for I
+where
+    I: std::iter::IntoIterator<Item = &'a Attribute>,
+{
+    fn doc(self) -> Option<String> {
+        let items: Vec<_> = self
+            .into_iter()
+            .filter_map(|attr| attr.parse_meta().ok().and_then(|m| m.doc().ok()))
+            .collect();
+        if items.is_empty() {
+            None
+        } else {
+            Some(items.join("\n"))
+        }
+    }
+
+    // fn filter_name<'a, P>(
+    //     &'a self,
+    //     name: &'static str,
+    // ) -> std::iter::Filter<std::slice::Iter<'a, Attribute>, P>
+    // where
+    //     P: FnMut(&&'a syn::Attribute) -> bool,
+    // {
+    //     let mut p = |attr: &&'a Attribute| {
+    //         attr.path
+    //             .get_ident()
+    //             .map_or(false, |ident| ident.to_string() == name)
+    //     };
+    //     self.iter().filter(p)
+    // }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -154,33 +202,21 @@ mod test {
         assert_quote_eq!(attr.path, list.path);
         assert!(list.nested.is_empty());
     }
+
+    #[test]
+    fn test_doc() {
+        let func: syn::ItemFn = parse_quote! {
+            #[derive]
+            /// doc line 1
+            #[test]
+            #[doc = "doc line 2"]
+            #[cfg]
+            fn f() {}
+        };
+        let doc = func.attrs.doc().unwrap();
+        assert_eq!(doc, "doc line 1\ndoc line 2");
+    }
 }
-
-// pub trait AttributesExt {
-//     fn filter_name<'a, P>(
-//         &'a self,
-//         name: &'static str,
-//     ) -> std::iter::Filter<std::slice::Iter<'a, Attribute>, P>
-//     where
-//         P: FnMut(&&'a syn::Attribute) -> bool;
-// }
-
-// impl AttributesExt for [Attribute] {
-//     fn filter_name<'a, P>(
-//         &'a self,
-//         name: &'static str,
-//     ) -> std::iter::Filter<std::slice::Iter<'a, Attribute>, P>
-//     where
-//         P: FnMut(&&'a syn::Attribute) -> bool,
-//     {
-//         let mut p = |attr: &&'a Attribute| {
-//             attr.path
-//                 .get_ident()
-//                 .map_or(false, |ident| ident.to_string() == name)
-//         };
-//         self.iter().filter(p)
-//     }
-// }
 
 pub trait IntoAttribute {
     fn into_attribute(self) -> Attribute;

@@ -18,6 +18,8 @@ pub trait MetaExt {
     fn is_list(&self) -> bool;
     /// Returns `true` if self matches [syn::Meta::NameValue]
     fn is_name_value(&self) -> bool;
+    /// Returns `true` if the content matches `doc = <string lit>`
+    fn is_doc(&self) -> bool;
 
     /// Promotes to empty [syn::Meta::List] with given `paren` if [syn::Meta::Path]
     ///
@@ -34,6 +36,9 @@ pub trait MetaExt {
     fn name_value(&self) -> Result<&MetaNameValue>;
     /// Returns [syn::MetaNameValue] of [syn::Meta::NameValue]; Otherwise `Err`
     fn name_value_mut(&mut self) -> Result<&mut MetaNameValue>;
+
+    /// Returns content of `doc = <content>`
+    fn doc(&self) -> Result<String>;
 }
 
 pub(crate) fn err_promote_to_list(meta: &Meta) -> Error {
@@ -52,6 +57,11 @@ impl MetaExt for Meta {
     }
     fn is_name_value(&self) -> bool {
         matches!(self, Meta::NameValue(_))
+    }
+    fn is_doc(&self) -> bool {
+        self.name_value().map_or(false, |v| {
+            v.path.is_ident("doc") && matches!(v.lit, Lit::Str(_))
+        })
     }
 
     fn promote_to_list(&mut self, paren: token::Paren) -> Result<&mut MetaList> {
@@ -91,6 +101,17 @@ impl MetaExt for Meta {
         match self {
             Meta::NameValue(ref mut name) => Ok(name),
             other => Err(Error::new_spanned(other, "Not a NameValue meta")),
+        }
+    }
+
+    fn doc(&self) -> Result<String> {
+        let name_value = self.name_value()?;
+        if !name_value.path.is_ident("doc") {
+            return Err(Error::new_spanned(name_value, "Not a doc meta"));
+        }
+        match &name_value.lit {
+            Lit::Str(lit) => Ok(lit.value().trim().to_owned()),
+            other => Err(Error::new_spanned(other, "Doc meta expects string literal")),
         }
     }
 }

@@ -195,6 +195,7 @@ impl ItemLike for TraitItem {
     }
 }
 
+/// Extension for `syn::*Item::attrs` using `crate::ext::ItemLike`
 pub trait ItemAttrExt: ItemLike {
     /// Takes a closure and calls it with separated attrs and item, as both mutable references.
     ///
