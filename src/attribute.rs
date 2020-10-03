@@ -146,6 +146,7 @@ mod test {
     use crate::assert_quote_eq;
     use quote::quote;
 
+    #[cfg(feature = "parsing")]
     fn test_meta_round_trip(attr: Attribute) -> Result<()> {
         let meta = attr.parse_meta()?;
         let created = Attribute::from_meta(meta);
@@ -156,6 +157,7 @@ mod test {
         Ok(())
     }
 
+    #[cfg(feature = "parsing")]
     #[test]
     fn run_test_meta_round_trip() {
         use syn::parse_quote;
@@ -166,6 +168,7 @@ mod test {
         test_meta_round_trip(parse_quote! { #[abc::de::ef] }).unwrap();
     }
 
+    #[cfg(feature = "parsing")]
     #[test]
     fn test_try_meta_mut() {
         let mut attr: Attribute = parse_quote! { #[cfg(test)] };
@@ -196,6 +199,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "parsing")]
     fn test_promoted_list() {
         let attr: Attribute = parse_quote! { #[derive] };
         let list = attr.promoted_list().unwrap();
@@ -203,6 +207,7 @@ mod test {
         assert!(list.nested.is_empty());
     }
 
+    #[cfg(all(feature = "parsing", feature = "full"))]
     #[test]
     fn test_doc() {
         let func: syn::ItemFn = parse_quote! {
