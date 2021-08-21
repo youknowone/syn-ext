@@ -1,8 +1,9 @@
 use crate::ident::GetIdent;
+#[cfg(feature = "parsing")]
 use crate::meta::{self, MetaExt};
-use syn::{
-    parse_quote, punctuated::Punctuated, token::Paren, Attribute, Ident, Meta, MetaList, Result,
-};
+use syn::{parse_quote, Attribute, Ident, Meta, MetaList};
+#[cfg(feature = "parsing")]
+use syn::{punctuated::Punctuated, token::Paren, Result};
 
 impl GetIdent for Attribute {
     /// Get ident of the [syn::Attribute::path] field.
@@ -66,7 +67,7 @@ impl AttributeExt for Attribute {
         let mut meta = self.parse_meta()?;
         let result = f(&mut meta);
         *self = Self::from_meta(meta);
-        Ok(result?)
+        result
     }
 
     fn promoted_list(&self) -> Result<MetaList> {

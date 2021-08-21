@@ -1,5 +1,5 @@
 use crate::ident::GetIdent;
-use syn::{Attribute, Ident, ImplItem, Item, ItemMod, Result, TraitItem};
+use syn::{Attribute, Ident, ImplItem, ImplItemMethod, Item, ItemFn, ItemMod, Result, TraitItem};
 
 /// Extension for [syn::Item]
 pub trait ItemLike {
@@ -7,6 +7,8 @@ pub trait ItemLike {
     fn attrs(&self) -> Result<&[Attribute]>;
     /// Returns mutable reference of inner attrs if not verbatim; otherwise `Err`
     fn attrs_mut(&mut self) -> Result<&mut Vec<Attribute>>;
+    /// Returns function-like trait of Item::Fn or ImplItem::Method
+    fn function_or_method_impl(&self) -> Result<&dyn FunctionLike>;
 
     /// Returns `true` if self matches `*ItemConst`
     fn is_const(&self) -> bool;
@@ -79,6 +81,18 @@ impl ItemLike for Item {
         Ok(attrs)
     }
 
+    fn function_or_method_impl(&self) -> Result<&dyn FunctionLike> {
+        use syn::Item::*;
+        use syn::*;
+        match self {
+            Fn(f @ ItemFn { .. }) => Ok(f),
+            other => Err(Error::new_spanned(
+                other,
+                "this item is not a function or method",
+            )),
+        }
+    }
+
     fn is_const(&self) -> bool {
         matches!(self, Item::Const(_))
     }
@@ -130,6 +144,18 @@ impl ItemLike for ImplItem {
         Ok(attrs)
     }
 
+    fn function_or_method_impl(&self) -> Result<&dyn FunctionLike> {
+        use syn::ImplItem::*;
+        use syn::*;
+        match self {
+            Method(f @ ImplItemMethod { .. }) => Ok(f),
+            other => Err(Error::new_spanned(
+                other,
+                "this item is not a function or method",
+            )),
+        }
+    }
+
     fn is_const(&self) -> bool {
         matches!(self, ImplItem::Const(_))
     }
@@ -174,11 +200,18 @@ impl ItemLike for TraitItem {
             other => {
                 return Err(Error::new_spanned(
                     other,
-                    "this kind of item doesn't have attrs",
+                    "this kind of impl item doesn't have attrs",
                 ))
             }
         };
         Ok(attrs)
+    }
+
+    fn function_or_method_impl(&self) -> Result<&dyn FunctionLike> {
+        Err(syn::Error::new_spanned(
+            self,
+            "trait item is not a function or method",
+        ))
     }
 
     fn is_const(&self) -> bool {
@@ -213,7 +246,7 @@ pub trait ItemAttrExt: ItemLike {
     where
         F: FnOnce(&mut Vec<Attribute>, &mut Self) -> Result<R>,
     {
-        let mut attrs = std::mem::replace(self.attrs_mut()?, Vec::new());
+        let mut attrs = std::mem::take(self.attrs_mut()?);
         let result = f(&mut attrs, self);
         let _temp = std::mem::replace(self.attrs_mut().unwrap(), attrs);
         assert!(
@@ -258,6 +291,7 @@ impl GetIdent for Item {
         use syn::Item::*;
         use syn::UseTree::*;
         use syn::*;
+        #[allow(clippy::collapsible_match)]
         let attrs = match self {
             Const(ItemConst { ref ident, .. }) => ident,
             Enum(ItemEnum { ref ident, .. }) => ident,
@@ -319,6 +353,55 @@ impl GetIdent for TraitItem {
     }
 }
 
+/// Extension for [syn::ItemFn] and [syn::ImplItemMethod]
+pub trait FunctionLike {
+    /// Returns reference of attrs
+    fn attrs(&self) -> &[Attribute];
+    /// Returns mutable reference of attrs
+    fn attrs_mut(&mut self) -> &mut Vec<Attribute>;
+    /// Return reference of vis
+    fn vis(&self) -> &syn::Visibility;
+
+    fn sig(&self) -> &syn::Signature;
+    fn block(&self) -> &syn::Block;
+}
+
+impl FunctionLike for ItemFn {
+    fn attrs(&self) -> &[Attribute] {
+        &self.attrs
+    }
+    fn attrs_mut(&mut self) -> &mut Vec<Attribute> {
+        &mut self.attrs
+    }
+    fn vis(&self) -> &syn::Visibility {
+        &self.vis
+    }
+    fn sig(&self) -> &syn::Signature {
+        &self.sig
+    }
+    fn block(&self) -> &syn::Block {
+        &self.block
+    }
+}
+
+impl FunctionLike for ImplItemMethod {
+    fn attrs(&self) -> &[Attribute] {
+        &self.attrs
+    }
+    fn attrs_mut(&mut self) -> &mut Vec<Attribute> {
+        &mut self.attrs
+    }
+    fn vis(&self) -> &syn::Visibility {
+        &self.vis
+    }
+    fn sig(&self) -> &syn::Signature {
+        &self.sig
+    }
+    fn block(&self) -> &syn::Block {
+        &self.block
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -362,5 +445,16 @@ mod tests {
             mod m;
         );
         assert!(module.items().is_none());
+    }
+
+    #[test]
+    fn test_function_like() {
+        let function: ItemFn = parse_quote!(
+            fn f(a: u8) -> Result<()> {}
+        );
+        let method: ImplItemMethod = parse_quote!(
+            fn f(a: u8) -> Result<()> {}
+        );
+        assert_eq!(quote!(#function).to_string(), quote!(#method).to_string());
     }
 }
