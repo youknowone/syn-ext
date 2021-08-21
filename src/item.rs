@@ -213,7 +213,7 @@ pub trait ItemAttrExt: ItemLike {
     where
         F: FnOnce(&mut Vec<Attribute>, &mut Self) -> Result<R>,
     {
-        let mut attrs = std::mem::replace(self.attrs_mut()?, Vec::new());
+        let mut attrs = std::mem::take(self.attrs_mut()?);
         let result = f(&mut attrs, self);
         let _temp = std::mem::replace(self.attrs_mut().unwrap(), attrs);
         assert!(
@@ -258,6 +258,7 @@ impl GetIdent for Item {
         use syn::Item::*;
         use syn::UseTree::*;
         use syn::*;
+        #[allow(clippy::collapsible_match)]
         let attrs = match self {
             Const(ItemConst { ref ident, .. }) => ident,
             Enum(ItemEnum { ref ident, .. }) => ident,
