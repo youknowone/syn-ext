@@ -1,8 +1,11 @@
 use crate::ident::GetIdent;
-use syn::{Attribute, Ident, ImplItem, ImplItemMethod, Item, ItemFn, ItemMod, Result, TraitItem};
+use syn::{
+    spanned::Spanned, Attribute, Ident, ImplItem, ImplItemMethod, Item, ItemFn, ItemMod, Result,
+    TraitItem,
+};
 
 /// Extension for [syn::Item]
-pub trait ItemLike {
+pub trait ItemLike: Spanned {
     /// Returns reference of inner attrs if not verbatim; otherwise `Err`
     fn attrs(&self) -> Result<&[Attribute]>;
     /// Returns mutable reference of inner attrs if not verbatim; otherwise `Err`
@@ -354,7 +357,7 @@ impl GetIdent for TraitItem {
 }
 
 /// Extension for [syn::ItemFn] and [syn::ImplItemMethod]
-pub trait FunctionLike {
+pub trait FunctionLike: Spanned {
     /// Returns reference of attrs
     fn attrs(&self) -> &[Attribute];
     /// Returns mutable reference of attrs
