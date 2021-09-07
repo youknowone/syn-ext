@@ -1,7 +1,7 @@
 use crate::ident::GetIdent;
 use syn::{
     spanned::Spanned, Attribute, Ident, ImplItem, ImplItemMethod, Item, ItemFn, ItemMod, Result,
-    TraitItem,
+    TraitItem, TraitItemMethod,
 };
 
 /// Extension for [syn::Item]
@@ -10,13 +10,11 @@ pub trait ItemLike: Spanned {
     fn attrs(&self) -> Result<&[Attribute]>;
     /// Returns mutable reference of inner attrs if not verbatim; otherwise `Err`
     fn attrs_mut(&mut self) -> Result<&mut Vec<Attribute>>;
-    /// Returns function-like trait of Item::Fn or ImplItem::Method
-    fn function_or_method_impl(&self) -> Result<&dyn FunctionLike>;
+    /// Returns function-like trait of Item::Fn, ImplItem::Method or TraitItem::Method
+    fn function_or_method(&self) -> Result<&dyn FunctionLike>;
 
     /// Returns `true` if self matches `*ItemConst`
     fn is_const(&self) -> bool;
-    /// Returns `true` if self matches `Item::Fn` or `*ItemMethod`
-    fn is_function_or_method(&self) -> bool;
     /// Returns `true` if self matches `*ItemType`
     fn is_type(&self) -> bool;
     /// Returns `true` if self matches `*ItemMacro`
@@ -84,7 +82,7 @@ impl ItemLike for Item {
         Ok(attrs)
     }
 
-    fn function_or_method_impl(&self) -> Result<&dyn FunctionLike> {
+    fn function_or_method(&self) -> Result<&dyn FunctionLike> {
         use syn::Item::*;
         use syn::*;
         match self {
@@ -98,9 +96,6 @@ impl ItemLike for Item {
 
     fn is_const(&self) -> bool {
         matches!(self, Item::Const(_))
-    }
-    fn is_function_or_method(&self) -> bool {
-        matches!(self, Item::Fn(_))
     }
     fn is_type(&self) -> bool {
         matches!(self, Item::Type(_))
@@ -147,7 +142,7 @@ impl ItemLike for ImplItem {
         Ok(attrs)
     }
 
-    fn function_or_method_impl(&self) -> Result<&dyn FunctionLike> {
+    fn function_or_method(&self) -> Result<&dyn FunctionLike> {
         use syn::ImplItem::*;
         use syn::*;
         match self {
@@ -161,9 +156,6 @@ impl ItemLike for ImplItem {
 
     fn is_const(&self) -> bool {
         matches!(self, ImplItem::Const(_))
-    }
-    fn is_function_or_method(&self) -> bool {
-        matches!(self, ImplItem::Method(_))
     }
     fn is_type(&self) -> bool {
         matches!(self, ImplItem::Type(_))
@@ -210,18 +202,20 @@ impl ItemLike for TraitItem {
         Ok(attrs)
     }
 
-    fn function_or_method_impl(&self) -> Result<&dyn FunctionLike> {
-        Err(syn::Error::new_spanned(
-            self,
-            "trait item is not a function or method",
-        ))
+    fn function_or_method(&self) -> Result<&dyn FunctionLike> {
+        use syn::TraitItem::*;
+        use syn::*;
+        match self {
+            Method(f @ TraitItemMethod { .. }) => Ok(f),
+            other => Err(Error::new_spanned(
+                other,
+                "this item is not a function or method",
+            )),
+        }
     }
 
     fn is_const(&self) -> bool {
         matches!(self, TraitItem::Const(_))
-    }
-    fn is_function_or_method(&self) -> bool {
-        matches!(self, TraitItem::Method(_))
     }
     fn is_type(&self) -> bool {
         matches!(self, TraitItem::Type(_))
@@ -366,7 +360,7 @@ pub trait FunctionLike: Spanned {
     fn vis(&self) -> &syn::Visibility;
 
     fn sig(&self) -> &syn::Signature;
-    fn block(&self) -> &syn::Block;
+    fn block(&self) -> Option<&syn::Block>;
 }
 
 impl FunctionLike for ItemFn {
@@ -382,8 +376,8 @@ impl FunctionLike for ItemFn {
     fn sig(&self) -> &syn::Signature {
         &self.sig
     }
-    fn block(&self) -> &syn::Block {
-        &self.block
+    fn block(&self) -> Option<&syn::Block> {
+        Some(&self.block)
     }
 }
 
@@ -400,8 +394,26 @@ impl FunctionLike for ImplItemMethod {
     fn sig(&self) -> &syn::Signature {
         &self.sig
     }
-    fn block(&self) -> &syn::Block {
-        &self.block
+    fn block(&self) -> Option<&syn::Block> {
+        Some(&self.block)
+    }
+}
+
+impl FunctionLike for TraitItemMethod {
+    fn attrs(&self) -> &[Attribute] {
+        &self.attrs
+    }
+    fn attrs_mut(&mut self) -> &mut Vec<Attribute> {
+        &mut self.attrs
+    }
+    fn vis(&self) -> &syn::Visibility {
+        &syn::Visibility::Inherited
+    }
+    fn sig(&self) -> &syn::Signature {
+        &self.sig
+    }
+    fn block(&self) -> Option<&syn::Block> {
+        self.default.as_ref()
     }
 }
 
