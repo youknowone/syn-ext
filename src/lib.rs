@@ -5,6 +5,8 @@
 
 #[cfg(any(feature = "derive", feature = "full"))]
 mod attribute;
+#[cfg(any(feature = "derive", feature = "full"))]
+mod generics;
 mod ident;
 #[cfg(feature = "full")]
 mod item;
