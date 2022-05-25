@@ -10,11 +10,11 @@ pub trait ItemLike: Spanned {
     fn attrs(&self) -> Result<&[Attribute]>;
     /// Returns mutable reference of inner attrs if not verbatim; otherwise `Err`
     fn attrs_mut(&mut self) -> Result<&mut Vec<Attribute>>;
-    /// Returns function-like trait of Item::Fn, ImplItem::Method or TraitItem::Method
+    /// Returns function-like trait object of Item::Fn, ImplItem::Method, or TraitItem::Method
     fn function_or_method(&self) -> Result<&dyn FunctionLike>;
+    /// Returns const-like trait object of Item::Const, ImplItem::Const, or TraitItem::Const
+    fn constant(&self) -> Result<&dyn ConstLike>;
 
-    /// Returns `true` if self matches `*ItemConst`
-    fn is_const(&self) -> bool;
     /// Returns `true` if self matches `*ItemType`
     fn is_type(&self) -> bool;
     /// Returns `true` if self matches `*ItemMacro`
@@ -83,20 +83,22 @@ impl ItemLike for Item {
     }
 
     fn function_or_method(&self) -> Result<&dyn FunctionLike> {
-        use syn::Item::*;
-        use syn::*;
         match self {
-            Fn(f @ ItemFn { .. }) => Ok(f),
-            other => Err(Error::new_spanned(
+            Item::Fn(f @ syn::ItemFn { .. }) => Ok(f),
+            other => Err(syn::Error::new_spanned(
                 other,
                 "this item is not a function or method",
             )),
         }
     }
 
-    fn is_const(&self) -> bool {
-        matches!(self, Item::Const(_))
+    fn constant(&self) -> Result<&dyn ConstLike> {
+        match self {
+            Item::Const(c @ syn::ItemConst { .. }) => Ok(c),
+            other => Err(syn::Error::new_spanned(other, "this item is not a const")),
+        }
     }
+
     fn is_type(&self) -> bool {
         matches!(self, Item::Type(_))
     }
@@ -143,20 +145,22 @@ impl ItemLike for ImplItem {
     }
 
     fn function_or_method(&self) -> Result<&dyn FunctionLike> {
-        use syn::ImplItem::*;
-        use syn::*;
         match self {
-            Method(f @ ImplItemMethod { .. }) => Ok(f),
-            other => Err(Error::new_spanned(
+            ImplItem::Method(f @ syn::ImplItemMethod { .. }) => Ok(f),
+            other => Err(syn::Error::new_spanned(
                 other,
                 "this item is not a function or method",
             )),
         }
     }
 
-    fn is_const(&self) -> bool {
-        matches!(self, ImplItem::Const(_))
+    fn constant(&self) -> Result<&dyn ConstLike> {
+        match self {
+            ImplItem::Const(c @ syn::ImplItemConst { .. }) => Ok(c),
+            other => Err(syn::Error::new_spanned(other, "this item is not a const")),
+        }
     }
+
     fn is_type(&self) -> bool {
         matches!(self, ImplItem::Type(_))
     }
@@ -203,20 +207,22 @@ impl ItemLike for TraitItem {
     }
 
     fn function_or_method(&self) -> Result<&dyn FunctionLike> {
-        use syn::TraitItem::*;
-        use syn::*;
         match self {
-            Method(f @ TraitItemMethod { .. }) => Ok(f),
-            other => Err(Error::new_spanned(
+            TraitItem::Method(f @ syn::TraitItemMethod { .. }) => Ok(f),
+            other => Err(syn::Error::new_spanned(
                 other,
                 "this item is not a function or method",
             )),
         }
     }
 
-    fn is_const(&self) -> bool {
-        matches!(self, TraitItem::Const(_))
+    fn constant(&self) -> Result<&dyn ConstLike> {
+        match self {
+            TraitItem::Const(c @ syn::TraitItemConst { .. }) => Ok(c),
+            other => Err(syn::Error::new_spanned(other, "this item is not a const")),
+        }
     }
+
     fn is_type(&self) -> bool {
         matches!(self, TraitItem::Type(_))
     }
@@ -350,7 +356,7 @@ impl GetIdent for TraitItem {
     }
 }
 
-/// Extension for [syn::ItemFn] and [syn::ImplItemMethod]
+/// Extension for [syn::ItemFn], [syn::ImplItemMethod], and [syn::TraitItemMethod]
 pub trait FunctionLike: Spanned {
     /// Returns reference of attrs
     fn attrs(&self) -> &[Attribute];
@@ -414,6 +420,96 @@ impl FunctionLike for TraitItemMethod {
     }
     fn block(&self) -> Option<&syn::Block> {
         self.default.as_ref()
+    }
+}
+
+/// Extension for [syn::ItemConst], [syn::ImplItemConst], and [syn::TraitItemConst]
+pub trait ConstLike: Spanned {
+    /// Returns reference of attrs
+    fn attrs(&self) -> &[Attribute];
+    /// Returns mutable reference of attrs
+    fn attrs_mut(&mut self) -> &mut Vec<Attribute>;
+    /// Return reference of vis
+    fn vis(&self) -> &syn::Visibility;
+    /// Return reference of const_token
+    fn const_token(&self) -> &syn::token::Const;
+    /// Return reference of ident
+    fn ident(&self) -> &syn::Ident;
+    /// Return reference of colon_token
+    fn colon_token(&self) -> &syn::token::Colon;
+    /// Return reference of ty
+    fn ty(&self) -> &syn::Type;
+}
+
+impl ConstLike for syn::ItemConst {
+    fn attrs(&self) -> &[Attribute] {
+        &self.attrs
+    }
+    fn attrs_mut(&mut self) -> &mut Vec<Attribute> {
+        &mut self.attrs
+    }
+    fn vis(&self) -> &syn::Visibility {
+        &self.vis
+    }
+    fn const_token(&self) -> &syn::token::Const {
+        &self.const_token
+    }
+    fn ident(&self) -> &syn::Ident {
+        &self.ident
+    }
+    fn colon_token(&self) -> &syn::token::Colon {
+        &self.colon_token
+    }
+    fn ty(&self) -> &syn::Type {
+        &self.ty
+    }
+}
+
+impl ConstLike for syn::ImplItemConst {
+    fn attrs(&self) -> &[Attribute] {
+        &self.attrs
+    }
+    fn attrs_mut(&mut self) -> &mut Vec<Attribute> {
+        &mut self.attrs
+    }
+    fn vis(&self) -> &syn::Visibility {
+        &self.vis
+    }
+    fn const_token(&self) -> &syn::token::Const {
+        &self.const_token
+    }
+    fn ident(&self) -> &syn::Ident {
+        &self.ident
+    }
+    fn colon_token(&self) -> &syn::token::Colon {
+        &self.colon_token
+    }
+    fn ty(&self) -> &syn::Type {
+        &self.ty
+    }
+}
+
+impl ConstLike for syn::TraitItemConst {
+    fn attrs(&self) -> &[Attribute] {
+        &self.attrs
+    }
+    fn attrs_mut(&mut self) -> &mut Vec<Attribute> {
+        &mut self.attrs
+    }
+    fn vis(&self) -> &syn::Visibility {
+        &syn::Visibility::Inherited
+    }
+    fn const_token(&self) -> &syn::token::Const {
+        &self.const_token
+    }
+    fn ident(&self) -> &syn::Ident {
+        &self.ident
+    }
+    fn colon_token(&self) -> &syn::token::Colon {
+        &self.colon_token
+    }
+    fn ty(&self) -> &syn::Type {
+        &self.ty
     }
 }
 
