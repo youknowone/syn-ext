@@ -1,7 +1,7 @@
 use crate::ident::GetIdent;
 use syn::{
-    spanned::Spanned, Attribute, Ident, ImplItem, ImplItemMethod, Item, ItemFn, ItemMod, Result,
-    TraitItem, TraitItemMethod,
+    spanned::Spanned, Attribute, Ident, ImplItem, ImplItemFn, Item, ItemFn, ItemMod, Result,
+    TraitItem, TraitItemFn,
 };
 
 /// Extension for [syn::Item]
@@ -33,7 +33,6 @@ impl ItemLike for Item {
             ForeignMod(ItemForeignMod { ref attrs, .. }) => attrs,
             Impl(ItemImpl { ref attrs, .. }) => attrs,
             Macro(ItemMacro { ref attrs, .. }) => attrs,
-            Macro2(ItemMacro2 { ref attrs, .. }) => attrs,
             Mod(ItemMod { ref attrs, .. }) => attrs,
             Static(ItemStatic { ref attrs, .. }) => attrs,
             Struct(ItemStruct { ref attrs, .. }) => attrs,
@@ -63,7 +62,6 @@ impl ItemLike for Item {
             ForeignMod(ItemForeignMod { ref mut attrs, .. }) => attrs,
             Impl(ItemImpl { ref mut attrs, .. }) => attrs,
             Macro(ItemMacro { ref mut attrs, .. }) => attrs,
-            Macro2(ItemMacro2 { ref mut attrs, .. }) => attrs,
             Mod(ItemMod { ref mut attrs, .. }) => attrs,
             Static(ItemStatic { ref mut attrs, .. }) => attrs,
             Struct(ItemStruct { ref mut attrs, .. }) => attrs,
@@ -113,7 +111,7 @@ impl ItemLike for ImplItem {
         use syn::*;
         let attrs = match self {
             Const(ImplItemConst { ref attrs, .. }) => attrs,
-            Method(ImplItemMethod { ref attrs, .. }) => attrs,
+            Fn(ImplItemFn { ref attrs, .. }) => attrs,
             Type(ImplItemType { ref attrs, .. }) => attrs,
             Macro(ImplItemMacro { ref attrs, .. }) => attrs,
             other => {
@@ -131,7 +129,7 @@ impl ItemLike for ImplItem {
         use syn::*;
         let attrs = match self {
             Const(ImplItemConst { ref mut attrs, .. }) => attrs,
-            Method(ImplItemMethod { ref mut attrs, .. }) => attrs,
+            Fn(ImplItemFn { ref mut attrs, .. }) => attrs,
             Type(ImplItemType { ref mut attrs, .. }) => attrs,
             Macro(ImplItemMacro { ref mut attrs, .. }) => attrs,
             other => {
@@ -146,7 +144,7 @@ impl ItemLike for ImplItem {
 
     fn function_or_method(&self) -> Result<&dyn FunctionLike> {
         match self {
-            ImplItem::Method(f @ syn::ImplItemMethod { .. }) => Ok(f),
+            ImplItem::Fn(f @ syn::ImplItemFn { .. }) => Ok(f),
             other => Err(syn::Error::new_spanned(
                 other,
                 "this item is not a function or method",
@@ -175,7 +173,7 @@ impl ItemLike for TraitItem {
         use syn::*;
         let attrs = match self {
             Const(TraitItemConst { ref attrs, .. }) => attrs,
-            Method(TraitItemMethod { ref attrs, .. }) => attrs,
+            Fn(TraitItemFn { ref attrs, .. }) => attrs,
             Type(TraitItemType { ref attrs, .. }) => attrs,
             Macro(TraitItemMacro { ref attrs, .. }) => attrs,
             other => {
@@ -193,7 +191,7 @@ impl ItemLike for TraitItem {
         use syn::*;
         let attrs = match self {
             Const(TraitItemConst { ref mut attrs, .. }) => attrs,
-            Method(TraitItemMethod { ref mut attrs, .. }) => attrs,
+            Fn(TraitItemFn { ref mut attrs, .. }) => attrs,
             Type(TraitItemType { ref mut attrs, .. }) => attrs,
             Macro(TraitItemMacro { ref mut attrs, .. }) => attrs,
             other => {
@@ -208,7 +206,7 @@ impl ItemLike for TraitItem {
 
     fn function_or_method(&self) -> Result<&dyn FunctionLike> {
         match self {
-            TraitItem::Method(f @ syn::TraitItemMethod { .. }) => Ok(f),
+            TraitItem::Fn(f @ syn::TraitItemFn { .. }) => Ok(f),
             other => Err(syn::Error::new_spanned(
                 other,
                 "this item is not a function or method",
@@ -302,7 +300,6 @@ impl GetIdent for Item {
             Fn(ItemFn { sig, .. }) => &sig.ident,
             Impl(ItemImpl { .. }) => unimplemented!(),
             Macro(ItemMacro { ref ident, .. }) => return ident.as_ref(),
-            Macro2(ItemMacro2 { ref ident, .. }) => ident,
             Mod(ItemMod { ref ident, .. }) => ident,
             Static(ItemStatic { ref ident, .. }) => ident,
             Struct(ItemStruct { ref ident, .. }) => ident,
@@ -326,7 +323,7 @@ impl GetIdent for ImplItem {
         use syn::*;
         let ident = match self {
             Const(ImplItemConst { ref ident, .. }) => ident,
-            Method(ImplItemMethod { sig, .. }) => &sig.ident,
+            Fn(ImplItemFn { sig, .. }) => &sig.ident,
             Type(ImplItemType { ref ident, .. }) => ident,
             Macro(ImplItemMacro {
                 mac: syn::Macro { path, .. },
@@ -344,7 +341,7 @@ impl GetIdent for TraitItem {
         use syn::*;
         let ident = match self {
             Const(TraitItemConst { ref ident, .. }) => ident,
-            Method(TraitItemMethod { sig, .. }) => &sig.ident,
+            Fn(TraitItemFn { sig, .. }) => &sig.ident,
             Type(TraitItemType { ref ident, .. }) => ident,
             Macro(TraitItemMacro {
                 mac: syn::Macro { path, .. },
@@ -356,7 +353,7 @@ impl GetIdent for TraitItem {
     }
 }
 
-/// Extension for [syn::ItemFn], [syn::ImplItemMethod], and [syn::TraitItemMethod]
+/// Extension for [syn::ItemFn], [syn::ImplItemMethod], and [syn::TraitItemFn]
 pub trait FunctionLike: Spanned {
     /// Returns reference of attrs
     fn attrs(&self) -> &[Attribute];
@@ -387,7 +384,7 @@ impl FunctionLike for ItemFn {
     }
 }
 
-impl FunctionLike for ImplItemMethod {
+impl FunctionLike for ImplItemFn {
     fn attrs(&self) -> &[Attribute] {
         &self.attrs
     }
@@ -405,7 +402,7 @@ impl FunctionLike for ImplItemMethod {
     }
 }
 
-impl FunctionLike for TraitItemMethod {
+impl FunctionLike for TraitItemFn {
     fn attrs(&self) -> &[Attribute] {
         &self.attrs
     }
@@ -563,7 +560,7 @@ mod tests {
         let function: ItemFn = parse_quote!(
             fn f(a: u8) -> Result<()> {}
         );
-        let method: ImplItemMethod = parse_quote!(
+        let method: ImplItemFn = parse_quote!(
             fn f(a: u8) -> Result<()> {}
         );
         assert_eq!(quote!(#function).to_string(), quote!(#method).to_string());

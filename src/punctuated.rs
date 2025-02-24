@@ -26,19 +26,21 @@ impl<T, P> PunctuatedExt<T, P> for Punctuated<T, P> {
 }
 
 #[cfg(test)]
+#[cfg(all(feature = "parsing", feature = "derive"))]
 mod test {
     use super::*;
     use crate::assert_quote_eq;
+    use crate::meta::MetaList1;
     use syn::parse_quote;
 
     #[test]
     fn test_remove() {
-        let mut list: syn::MetaList = parse_quote!(meta(a, b, c, d));
+        let mut list: MetaList1 = parse_quote!(meta(a, b, c, d));
         list.nested.remove(2);
-        let expected: syn::MetaList = parse_quote!(meta(a, b, d));
+        let expected: MetaList1 = parse_quote!(meta(a, b, d));
         assert_quote_eq!(list, expected);
         list.nested.remove(0);
-        let expected: syn::MetaList = parse_quote!(meta(b, d));
+        let expected: MetaList1 = parse_quote!(meta(b, d));
         assert_quote_eq!(list, expected);
     }
 }

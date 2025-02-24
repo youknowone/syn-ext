@@ -4,6 +4,7 @@ version = "0.4.0"
 authors = ["Jeong YunWon <jeong+synext@youknowone.org>"]
 edition = "2018"
 description = "Human friendly or editable extension for syn"
+repository = "https://github.com/youknowone/syn-ext"
 license-file = "LICENSE"
 documentation = "https://docs.rs/syn-ext/"
 
@@ -24,7 +25,9 @@ proc-macro = ["syn/proc-macro"]
 # test = ["syn-test-suite/all-features"]
 
 [dependencies]
-syn = "^1"
+syn = "^2"
+proc-macro2 = "1"
+quote = "1"
 
 [dev-dependencies]
 quote = "^1"
