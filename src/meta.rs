@@ -226,7 +226,7 @@ impl MetaExt for Meta1 {
         matches!(self, Meta1::NameValue(_))
     }
     fn is_doc(&self) -> bool {
-        self.name_value().map_or(false, |v| {
+        self.name_value().is_ok_and(|v| {
             v.path.is_ident("doc")
                 && matches!(
                     v.value,
@@ -585,7 +585,7 @@ pub trait MetaAttributeExt<'a> {
         KF: Fn(&Path) -> Result<Option<K>>;
 }
 
-#[cfg(any(feature = "parsing"))]
+#[cfg(feature = "parsing")]
 #[allow(clippy::type_complexity)]
 impl<'a, I> MetaAttributeExt<'a> for I
 where
