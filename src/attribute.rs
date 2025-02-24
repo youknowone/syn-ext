@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use crate::ident::GetIdent;
 #[cfg(feature = "parsing")]
 use crate::meta::{self, MetaExt};
@@ -68,6 +66,7 @@ impl AttributeExt for Attribute {
     }
 
     fn parse_meta(&self) -> Result<Meta1> {
+        use std::convert::TryInto;
         self.meta.clone().try_into()
     }
 

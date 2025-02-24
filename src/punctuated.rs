@@ -26,7 +26,7 @@ impl<T, P> PunctuatedExt<T, P> for Punctuated<T, P> {
 }
 
 #[cfg(test)]
-#[cfg(any(feature = "derive", feature = "full"))]
+#[cfg(all(feature = "parsing", feature = "derive"))]
 mod test {
     use super::*;
     use crate::assert_quote_eq;

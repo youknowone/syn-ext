@@ -3,12 +3,15 @@ use crate::attribute::AttributeExt;
 use crate::ident::GetIdent;
 use crate::path::GetPath;
 use std::collections::HashMap as Map;
-use std::convert::TryFrom;
+#[cfg(feature = "parsing")]
 use syn::ext::IdentExt;
+#[cfg(feature = "parsing")]
 use syn::parse::Parser;
+#[cfg(feature = "parsing")]
+use syn::Meta as Meta2;
 use syn::{
-    punctuated::Punctuated, token, Attribute, Error, Expr, ExprLit, Ident, Lit, Meta as Meta2,
-    MetaNameValue, Path, Result,
+    punctuated::Punctuated, token, Attribute, Error, Expr, ExprLit, Ident, Lit, MetaNameValue,
+    Path, Result,
 };
 
 #[derive(Clone)]
@@ -46,7 +49,8 @@ fn degroup(mut expr: Expr) -> Expr {
     expr
 }
 
-impl TryFrom<Meta2> for Meta1 {
+#[cfg(feature = "parsing")]
+impl std::convert::TryFrom<Meta2> for Meta1 {
     type Error = syn::Error;
 
     fn try_from(meta: Meta2) -> std::result::Result<Self, Self::Error> {
@@ -566,6 +570,7 @@ where
 }
 
 /// experimental
+#[allow(dead_code)]
 #[allow(clippy::type_complexity)]
 pub trait MetaAttributeExt<'a> {
     fn to_multi_map_and_attrs<K, KF>(
