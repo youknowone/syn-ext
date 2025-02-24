@@ -4,6 +4,7 @@ version = "0.4.0"
 authors = ["Jeong YunWon <jeong+synext@youknowone.org>"]
 edition = "2018"
 description = "Human friendly or editable extension for syn"
+repository = "https://github.com/youknowone/syn-ext"
 license-file = "LICENSE"
 documentation = "https://docs.rs/syn-ext/"
 
