@@ -24,7 +24,9 @@ proc-macro = ["syn/proc-macro"]
 # test = ["syn-test-suite/all-features"]
 
 [dependencies]
-syn = "^1"
+syn = "^2"
+proc-macro2 = "1"
+quote = "1"
 
 [dev-dependencies]
 quote = "^1"

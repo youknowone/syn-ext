@@ -1,14 +1,17 @@
+use std::convert::TryInto;
+
 use crate::ident::GetIdent;
 #[cfg(feature = "parsing")]
 use crate::meta::{self, MetaExt};
-use syn::{parse_quote, Attribute, Ident, Meta, MetaList};
+use crate::meta::{Meta1, MetaList1};
+use syn::{parse_quote, Attribute, Ident};
 #[cfg(feature = "parsing")]
 use syn::{punctuated::Punctuated, token::Paren, Result};
 
 impl GetIdent for Attribute {
     /// Get ident of the [syn::Attribute::path] field.
     fn get_ident(&self) -> Option<&Ident> {
-        self.path.get_ident()
+        self.path().get_ident()
     }
 }
 
@@ -20,6 +23,10 @@ pub trait AttributeExt {
     where
         M: IntoAttribute;
 
+    /// Parses the content of the attribute, consisting of the path and tokens,
+    /// as a [`Meta`][Meta1] if possible.
+    fn parse_meta(&self) -> Result<Meta1>;
+
     /// Takes a closure and calls it with parsed meta. After call, applys back the manipulated [syn::Meta].
     ///
     /// 1. Try [syn::Attribute::parse_meta]; return if `Err`
@@ -30,14 +37,14 @@ pub trait AttributeExt {
     /// Note: Even `f` returns `Err`, meta will be made into self.
     fn try_meta_mut<F, R>(&mut self, f: F) -> Result<R>
     where
-        F: FnOnce(&mut Meta) -> Result<R>;
+        F: FnOnce(&mut Meta1) -> Result<R>;
 
     /// Returns a fake promoted list value of [syn::MetaList].
     ///
     /// If [syn::Meta::List], return inner [syn::MetaList].
     /// If [syn::Meta::Path], return a fake [syn::MetaList] with default paren and empty nested.
     /// Otherwise return `Err`
-    fn promoted_list(&self) -> Result<MetaList>;
+    fn promoted_list(&self) -> Result<MetaList1>;
 
     /// Takes a closure and calls it with promoted list of parsed meta. After call, applys back the manipulated [syn::MetaList].
     ///
@@ -48,7 +55,7 @@ pub trait AttributeExt {
     /// 5. Return the result of `f`.
     fn try_promoted_list_mut<F, R>(&mut self, paren: Paren, f: F) -> Result<R>
     where
-        F: FnOnce(&mut MetaList) -> Result<R>;
+        F: FnOnce(&mut MetaList1) -> Result<R>;
 }
 
 #[cfg(feature = "parsing")]
@@ -60,9 +67,13 @@ impl AttributeExt for Attribute {
         meta.into_attribute()
     }
 
+    fn parse_meta(&self) -> Result<Meta1> {
+        self.meta.clone().try_into()
+    }
+
     fn try_meta_mut<F, R>(&mut self, f: F) -> Result<R>
     where
-        F: FnOnce(&mut Meta) -> Result<R>,
+        F: FnOnce(&mut Meta1) -> Result<R>,
     {
         let mut meta = self.parse_meta()?;
         let result = f(&mut meta);
@@ -70,21 +81,21 @@ impl AttributeExt for Attribute {
         result
     }
 
-    fn promoted_list(&self) -> Result<MetaList> {
+    fn promoted_list(&self) -> Result<MetaList1> {
         match self.parse_meta()? {
-            Meta::Path(path) => Ok(MetaList {
+            Meta1::Path(path) => Ok(MetaList1 {
                 path,
                 paren_token: Default::default(),
                 nested: Punctuated::new(),
             }),
-            Meta::List(metalist) => Ok(metalist),
+            Meta1::List(metalist) => Ok(metalist),
             other => Err(meta::err_promote_to_list(&other)),
         }
     }
 
     fn try_promoted_list_mut<F, R>(&mut self, paren: Paren, f: F) -> Result<R>
     where
-        F: FnOnce(&mut MetaList) -> Result<R>,
+        F: FnOnce(&mut MetaList1) -> Result<R>,
     {
         self.try_meta_mut(|meta| {
             let metalist = meta.promote_to_list(paren)?;
@@ -146,6 +157,7 @@ mod test {
     use super::*;
     use crate::assert_quote_eq;
     use quote::quote;
+    use Meta1 as Meta;
 
     #[cfg(feature = "parsing")]
     fn test_meta_round_trip(attr: Attribute) -> Result<()> {
@@ -204,7 +216,7 @@ mod test {
     fn test_promoted_list() {
         let attr: Attribute = parse_quote! { #[derive] };
         let list = attr.promoted_list().unwrap();
-        assert_quote_eq!(attr.path, list.path);
+        assert_quote_eq!(attr.path(), list.path);
         assert!(list.nested.is_empty());
     }
 
@@ -228,14 +240,14 @@ pub trait IntoAttribute {
     fn into_attribute(self) -> Attribute;
 }
 
-impl IntoAttribute for Meta {
+impl IntoAttribute for Meta1 {
     fn into_attribute(self) -> Attribute {
         parse_quote!( #[ #self ] )
     }
 }
 
-impl IntoAttribute for MetaList {
+impl IntoAttribute for MetaList1 {
     fn into_attribute(self) -> Attribute {
-        Meta::List(self).into_attribute()
+        Meta1::List(self).into_attribute()
     }
 }

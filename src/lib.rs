@@ -14,7 +14,6 @@ mod item;
 mod meta;
 mod path;
 mod punctuated;
-mod shared;
 #[cfg(test)]
 #[macro_use]
 mod test;
@@ -54,5 +53,5 @@ pub mod ext {
 
 pub mod types {
     #[cfg(any(feature = "derive", feature = "full"))]
-    pub use crate::meta::PunctuatedNestedMeta;
+    pub use crate::meta::{Meta1 as Meta, MetaList1 as MetaList, NestedMeta, PunctuatedNestedMeta};
 }
