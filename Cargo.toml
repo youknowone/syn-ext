@@ -1,6 +1,6 @@
 [package]
 name = "syn-ext"
-version = "0.5.0"
+version = "0.5.1+deprecated"
 authors = ["Jeong YunWon <jeong+synext@youknowone.org>"]
 edition = "2018"
 description = "Deprecated: use syn directly instead of this shortcut utility"
